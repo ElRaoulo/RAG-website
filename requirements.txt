@@ -1,0 +1,5 @@
+google-cloud-aiplatform
+langchain
+streamlit
+PyPDF2
+chromadb
