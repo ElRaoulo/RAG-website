@@ -1,9 +1,9 @@
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
 from langchain.vectorstores.chroma import Chroma
-
+import os
 
 CHROMA_PATH = "chroma"
 DATA_PATH = "data"
@@ -13,11 +13,27 @@ def populate_database(documents):
     chunks = split_documents(documents)
     add_to_chroma(chunks)
 
-
 def load_documents():
-    document_loader = PyPDFDirectoryLoader(DATA_PATH)
-    return document_loader.load()
-
+    documents = []
+    # Walk through the directory and load each PDF file
+    for filename in os.listdir(DATA_PATH):
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(DATA_PATH, filename)
+            pdf_reader = PdfReader(file_path)
+            
+            # Extract text from each page
+            for page_num, page in enumerate(pdf_reader.pages):
+                text = page.extract_text()
+                # Create a Document object for each page
+                doc = Document(
+                    page_content=text,
+                    metadata={
+                        "source": filename,
+                        "page": page_num + 1  # 1-based page numbering
+                    }
+                )
+                documents.append(doc)
+    return documents
 
 def split_documents(documents: list[Document]):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -28,11 +44,14 @@ def split_documents(documents: list[Document]):
     )
     return text_splitter.split_documents(documents)
 
-
 def add_to_chroma(chunks: list[Document]):
+    # Create embeddings function
+    embedding_function = get_embedding_function()
+    
     # Load the existing database.
     db = Chroma(
-        persist_directory=CHROMA_PATH, embedding_function=get_embedding_function()
+        persist_directory=CHROMA_PATH,
+        embedding_function=embedding_function
     )
 
     # Calculate Page IDs.
@@ -56,12 +75,9 @@ def add_to_chroma(chunks: list[Document]):
     else:
         print("✅ No new documents to add")
 
-
 def calculate_chunk_ids(chunks):
-
-    # This will create IDs like "data/monopoly.pdf:6:2"
+    # This will create IDs like "document.pdf:6:2"
     # Page Source : Page Number : Chunk Index
-
     last_page_id = None
     current_chunk_index = 0
 

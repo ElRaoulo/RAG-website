@@ -1,7 +1,10 @@
 import argparse
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
+from langchain_google_genai import GoogleGenerativeAI
+from google.generativeai import GenerativeModel
+import google.generativeai as genai
+from langchain_core.messages import HumanMessage
 
 from get_embedding_function import get_embedding_function
 
@@ -17,9 +20,7 @@ Answer the question based only on the following context:
 Answer the question based on the above context: {question}
 """
 
-
-
-def query_rag(query_text: str, k:int=2):
+def query_rag(query_text: str, k: int = 2):
     # Prepare the DB.
     embedding_function = get_embedding_function()
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
@@ -31,7 +32,8 @@ def query_rag(query_text: str, k:int=2):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = Ollama(model="dolphin-phi")
+    # Initialize Gemini Pro
+    model = GoogleGenerativeAI(model="gemini-pro", temperature=0.3)
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]

@@ -3,9 +3,19 @@ from query_data import query_rag
 from populate_database import populate_database, split_documents
 from langchain.schema.document import Document
 import PyPDF2
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import Chroma
 from get_embedding_function import get_embedding_function
 import logging
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Check for API key
+if not os.getenv("GOOGLE_API_KEY"):
+    st.error("Please set GOOGLE_API_KEY environment variable")
+    st.stop()
 
 CHROMA_PATH = "chroma"
 
@@ -48,26 +58,27 @@ uploaded_file = st.sidebar.file_uploader("Upload a PDF file:", type=["pdf"])
 def read_pdf(file):
     pdf_reader = PyPDF2.PdfReader(file)
     text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text() + "\n"
-    return text
+    for page_num, page in enumerate(pdf_reader.pages):
+        text = page.extract_text()
+        # Create a Document object for each page
+        yield Document(
+            page_content=text,
+            metadata={
+                "source": file.name,
+                "page": page_num + 1
+            }
+        )
 
 # Add buttons to submit and clear database in the sidebar
 col1, col2 = st.sidebar.columns(2)
 
 if col1.button("Submit"):
     if uploaded_file is not None:
-        # Read the PDF content
-        pdf_content = read_pdf(uploaded_file)
+        # Read the PDF content and create documents
+        documents = list(read_pdf(uploaded_file))
         
-        # Create a Document object
-        doc = Document(page_content=pdf_content, metadata={"source": uploaded_file.name})
-        
-        # Split the document
-        chunks = split_documents([doc])
-        
-        # Populate the database
-        populate_database(chunks)
+        # Split the documents and populate the database
+        populate_database(documents)
         st.sidebar.success("Database populated successfully!")
     else:
         st.sidebar.error("Please upload a PDF file first.")
