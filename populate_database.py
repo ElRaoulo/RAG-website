@@ -5,7 +5,7 @@ from get_embedding_function import get_embedding_function
 from langchain.vectorstores.chroma import Chroma
 import os
 
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "/tmp/chroma"
 DATA_PATH = "data"
 
 # Populate the database

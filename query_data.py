@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 
 from get_embedding_function import get_embedding_function
 
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "/tmp/chroma"
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:

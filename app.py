@@ -7,21 +7,20 @@ from langchain_community.vectorstores import Chroma
 from get_embedding_function import get_embedding_function
 import logging
 import os
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Check for API key
-if not os.getenv("GOOGLE_API_KEY"):
-    st.error("Please set GOOGLE_API_KEY environment variable")
-    st.stop()
-
-CHROMA_PATH = "chroma"
+# Initialize session state for database
+if 'db_initialized' not in st.session_state:
+    st.session_state.db_initialized = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Get API key from Streamlit secrets
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+
+CHROMA_PATH = "/tmp/chroma"  # Changed to tmp directory for cloud storage
 
 # Function to clear the database
 def clear_database():
