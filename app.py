@@ -5,67 +5,95 @@ from query_data import query_rag
 from populate_database import populate_database, split_documents
 from langchain_core.documents import Document
 import PyPDF2
-
-# Initialize session state for database
-if 'db_initialized' not in st.session_state:
-    st.session_state.db_initialized = False
+import tempfile
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get API key from Streamlit secrets
-if 'GOOGLE_API_KEY' not in st.secrets:
-    st.error("GOOGLE_API_KEY not found in secrets.")
-    st.stop()
+# Determine Chroma path based on environment
+CHROMA_PATH = os.getenv('CHROMA_PATH', tempfile.gettempdir() + '/chroma')
 
-os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+# Ensure the directory exists
+os.makedirs(CHROMA_PATH, exist_ok=True)
 
-CHROMA_PATH = "/tmp/chroma"
+def validate_pdf(file):
+    """Validate PDF file before processing."""
+    try:
+        PyPDF2.PdfReader(file)
+        return True
+    except Exception as e:
+        st.error(f"Invalid PDF file: {e}")
+        return False
 
 # Function to read PDF content
 def read_pdf(file):
-    pdf_reader = PyPDF2.PdfReader(file)
-    documents = []
-    for page_num, page in enumerate(pdf_reader.pages):
-        text = page.extract_text()
-        documents.append(Document(
-            page_content=text,
-            metadata={
-                "source": file.name,
-                "page": page_num + 1
-            }
-        ))
-    return documents
+    try:
+        pdf_reader = PyPDF2.PdfReader(file)
+        documents = []
+        for page_num, page in enumerate(pdf_reader.pages):
+            text = page.extract_text()
+            documents.append(Document(
+                page_content=text,
+                metadata={
+                    "source": file.name,
+                    "page": page_num + 1
+                }
+            ))
+        return documents
+    except Exception as e:
+        st.error(f"Error reading PDF: {e}")
+        return []
 
-# Add a title
-st.title("RAG Application")
+def main():
+    # Add a title
+    st.title("RAG Document Query Application")
 
-# Add a sidebar title
-st.sidebar.title("Document Upload")
+    # Check for API key
+    if 'GOOGLE_API_KEY' not in st.secrets:
+        st.error("Google API Key is not configured. Please set up in Streamlit secrets.")
+        st.stop()
 
-# Add file uploader to sidebar
-uploaded_file = st.sidebar.file_uploader("Upload a PDF file:", type=["pdf"])
+    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
-if uploaded_file:
-    if st.sidebar.button("Process Document"):
-        with st.spinner("Processing document..."):
-            documents = read_pdf(uploaded_file)
-            populate_database(documents)
-            st.success("Document processed successfully!")
+    # Add a sidebar title
+    st.sidebar.title("Document Upload")
 
-# Main query interface
-st.subheader("Ask Questions")
-query_text = st.text_input("Enter your question about the document:")
+    # Add file uploader to sidebar
+    uploaded_file = st.sidebar.file_uploader("Upload a PDF file:", type=["pdf"])
 
-k = st.slider("Number of context chunks", 1, 5, 2)
-show_context = st.checkbox("Show context")
+    if uploaded_file:
+        if validate_pdf(uploaded_file):
+            if st.sidebar.button("Process Document"):
+                with st.spinner("Processing document..."):
+                    try:
+                        documents = read_pdf(uploaded_file)
+                        if documents:
+                            populate_database(documents)
+                            st.sidebar.success("Document processed successfully!")
+                        else:
+                            st.sidebar.error("Failed to process the document.")
+                    except Exception as e:
+                        st.sidebar.error(f"Error processing document: {e}")
 
-if query_text:
-    with st.spinner("Generating answer..."):
-        prompt, response = query_rag(query_text=query_text, k=k)
-        if show_context:
-            st.write("Context:")
-            st.write(prompt)
-        st.write("Response:")
-        st.write(response)
+    # Main query interface
+    st.subheader("Ask Questions")
+    query_text = st.text_input("Enter your question about the document:")
+
+    k = st.slider("Number of context chunks", 1, 5, 2)
+    show_context = st.checkbox("Show context")
+
+    if query_text:
+        with st.spinner("Generating answer..."):
+            try:
+                prompt, response = query_rag(query_text=query_text, k=k)
+                if show_context:
+                    st.write("Context:")
+                    st.write(prompt)
+                st.write("Response:")
+                st.write(response)
+            except Exception as e:
+                st.error(f"Error generating response: {e}")
+
+if __name__ == "__main__":
+    main()
