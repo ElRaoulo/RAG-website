@@ -1,8 +1,8 @@
-google-generativeai
-langchain-google-genai
-python-dotenv
-streamlit
-chromadb
-langchain
-PyPDF2
+google-generativeai==0.3.2
+langchain-google-genai==0.1.1
+python-dotenv==1.0.0
+streamlit==1.29.0
+chromadb==0.4.24
+langchain==0.1.11
+PyPDF2==3.0.1
 pysqlite3-binary
