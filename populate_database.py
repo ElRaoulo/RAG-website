@@ -1,3 +1,13 @@
+import sys
+import importlib
+
+# Attempt to import pysqlite3 and patch sqlite3 if needed
+try:
+    import pysqlite3 as sqlite3
+    sys.modules['sqlite3'] = sqlite3
+except ImportError:
+    pass
+
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -20,6 +30,9 @@ def split_documents(documents: list[Document]):
     return text_splitter.split_documents(documents)
 
 def add_to_chroma(chunks: list[Document]):
+    # Ensure the Chroma path exists
+    os.makedirs(CHROMA_PATH, exist_ok=True)
+    
     # Initialize Chroma client
     client = PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection("documents")

@@ -1,3 +1,13 @@
+import sys
+import importlib
+
+# Attempt to import pysqlite3 and patch sqlite3 if needed
+try:
+    import pysqlite3 as sqlite3
+    sys.modules['sqlite3'] = sqlite3
+except ImportError:
+    pass
+
 import argparse
 from chromadb import PersistentClient
 from langchain_core.prompts import ChatPromptTemplate
